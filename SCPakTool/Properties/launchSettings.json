@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "SCPakTool": {
+      "commandName": "Project",
+      "commandLineArgs": "-ins \"C:\\Content.pak\""
+    }
+  }
+}
