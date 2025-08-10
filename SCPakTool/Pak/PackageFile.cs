@@ -10,13 +10,13 @@ using System.Threading.Tasks;
 
 namespace SCPakTool.Pak
 {
-    public class PakFile : IDisposable
+    public class PackageFile : IDisposable
     {
         public const int ContentTableOffset = 16;
-        public static readonly string SignatureValue = "PK2\0";
+        public static readonly string ExpectedSignature = "PK2\0";
 
-        public XorStream HeaderStream { get; private set; }
-        public XorStream ContentStream { get; private set; }
+        public EncryptedStream HeaderStream { get; private set; }
+        public EncryptedStream ContentStream { get; private set; }
 
         public BinaryReader HeaderReader { get; private set; }
         public BinaryReader ContentReader { get; private set; }
@@ -27,14 +27,14 @@ namespace SCPakTool.Pak
 
         public List<ContentDescriptor> ContentTable { get; private set; } = [];
 
-        public PakFile(Stream dataStream, string? headerKey = null, string? contentKey = null)
+        public PackageFile(Stream dataStream, string? headerKey = null, string? contentKey = null)
         {
             var signatureBytes = new byte[4];
             dataStream.Read(signatureBytes, 0, 4);
             dataStream.Position = 0;
-            if (Encoding.UTF8.GetString(signatureBytes) is string sig && sig != SignatureValue)
-                throw new FormatException($"Failed to read .pak file, the signature didn't match what was expected. Expected 'PK2\\0', got '{sig}'!");
-            HeaderStream = new XorStream(dataStream, headerKey is not null ? Encoding.UTF8.GetBytes(headerKey) : null, 4);
+            if (Encoding.UTF8.GetString(signatureBytes) is string sig && sig != ExpectedSignature)
+                throw new FormatException($"Failed to read .pak file, the signature didn't match what was expected. Expected '{ExpectedSignature}', got '{sig}'!");
+            HeaderStream = new EncryptedStream(dataStream, headerKey is not null ? Encoding.UTF8.GetBytes(headerKey) : null, 4);
             HeaderReader = new BinaryReader(HeaderStream);
             using (new ScopedCursor(HeaderStream, 0))
             {
@@ -42,7 +42,7 @@ namespace SCPakTool.Pak
                 ContentOffset = HeaderReader.ReadInt64();
                 ContentCount = HeaderReader.ReadInt32();
             }
-            ContentStream = new XorStream(dataStream, contentKey is not null ? Encoding.UTF8.GetBytes(contentKey) : null, ContentOffset);
+            ContentStream = new EncryptedStream(dataStream, contentKey is not null ? Encoding.UTF8.GetBytes(contentKey) : null, ContentOffset);
             ContentReader = new BinaryReader(ContentStream);
             ReadContentTable();
         }
