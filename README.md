@@ -19,7 +19,7 @@ scpaktool --unpack myfile.pak output_folder
 scpaktool --pack myfolder myfile.pak
 
 # Inspect metadata
-scpaktool --inspect myfile.pak
+scpaktool inspect --pak [file] --header-key [key] --content-key [key]
 ```
 
 ## Folder Structure
