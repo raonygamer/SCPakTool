@@ -78,7 +78,6 @@ namespace SCPakTool
                     return -1;
 #endif
                 }
-                //TODO: code to inspect and read shit
                 return 0;
             }
             return -1;
