@@ -55,7 +55,7 @@ namespace SCPakTool
                 using var fs = info.OpenRead();
                 try
                 {
-                    var package = new PakFile(fs, headerKey, contentKey);
+                    var package = new PackageFile(fs, headerKey, contentKey);
                     Log.Write($"Inspecting '{info.FullName}'...");
                     Log.Write($"Survivalcraft 2 Package File:", ConsoleColor.DarkCyan);
                     Log.Write($" - Size: {(package.HeaderStream.Length / 1.049e+6).ToString("F3", CultureInfo.InvariantCulture)} MiB", ConsoleColor.Green);

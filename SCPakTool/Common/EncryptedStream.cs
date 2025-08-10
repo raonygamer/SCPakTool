@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace SCPakTool.Common
 {
-    public class XorStream : Stream
+    public class EncryptedStream : Stream
     {
         public Stream BaseStream => _baseStream;
 
@@ -14,7 +14,7 @@ namespace SCPakTool.Common
         private byte[]? _key;
         private long _keyOffset;
 
-        public XorStream(Stream stream, byte[]? key = null, long keyOffset = 0)
+        public EncryptedStream(Stream stream, byte[]? key = null, long keyOffset = 0)
         {
             _baseStream = stream;
             _key = key;
