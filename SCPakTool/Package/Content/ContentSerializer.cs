@@ -10,7 +10,7 @@ namespace SCPakTool.Package.Content
     {
         public abstract void Read(Stream stream);
         public abstract void Write(Stream stream);
-        public abstract void Write(FileStream fileStream);
-        public abstract string GetFileExtension();
+        public abstract void Write(FileStream[] fileStreams);
+        public abstract IEnumerable<string> GetFileExtension();
     }
 }

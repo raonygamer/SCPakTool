@@ -5,6 +5,7 @@ using System.Text;
 namespace SCPakTool
 {
     using Common;
+    using SCPakTool.Package.Content;
     using SCPakTool.Pak;
     using System.Drawing;
     using System.Globalization;
@@ -67,6 +68,25 @@ namespace SCPakTool
                         Log.Write($"       - Type: {content.Type}", ConsoleColor.DarkMagenta);
                         Log.Write($"       - Data Offset: 0x{content.Offset:x}", ConsoleColor.Green);
                         Log.Write($"       - Data Size: {(content.Size / 1.049e+6).ToString("F3", CultureInfo.InvariantCulture)} MiB", ConsoleColor.Green);
+                        string path = "C:\\Users\\bravo\\OneDrive\\Documentos\\Unpacked";
+                        Directory.CreateDirectory(Path.GetDirectoryName(Path.Combine(path, content.Name))!);
+                        if (PackageContentReader.GetNewSerializerForType(content.Type) is not ContentSerializer serializer)
+                        {
+                            using (new ScopedCursor(package.ContentStream, package.ContentOffset + content.Offset))
+                            {
+                                File.WriteAllBytes(Path.Combine(path, content.Name + ".bin"), package.ContentReader.ReadBytes((int)content.Size));
+                            }
+                            continue;
+                        }
+
+                        var fileStreams = new List<FileStream>();
+                        foreach (var ext in serializer.GetFileExtension())
+                        {
+                            fileStreams.Add(File.Create(Path.Combine(path, content.Name + $".{ext}")));
+                        }
+
+                        PackageContentReader.WriteContentToFile([.. fileStreams], serializer, package, content);
+                        fileStreams.ForEach(stream => stream.Dispose());
                     }
                 }
                 catch (Exception e)

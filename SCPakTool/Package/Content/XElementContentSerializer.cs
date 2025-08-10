@@ -7,14 +7,14 @@ using System.Threading.Tasks;
 
 namespace SCPakTool.Package.Content
 {
-    [ContentSerializer("System.String")]
-    public class StringContentSerializer : ContentSerializer
+    [ContentSerializer("System.Xml.Linq.XElement")]
+    public class XElementContentSerializer : ContentSerializer
     {
         public string Value = string.Empty;
 
-        public override IEnumerable<string> GetFileExtension() 
-        { 
-            yield return "txt"; 
+        public override IEnumerable<string> GetFileExtension()
+        {
+            yield return "xml";
         }
 
         public override void Read(Stream stream)
