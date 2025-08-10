@@ -1,10 +1,14 @@
-﻿using Common;
-using System.CommandLine;
+﻿using System.CommandLine;
 using System.IO;
 using System.Text;
 
 namespace SCPakTool
 {
+    using Common;
+    using SCPakTool.Pak;
+    using System.Drawing;
+    using System.Globalization;
+
     public class Program
     {
         private static Program? _instance;
@@ -20,27 +24,59 @@ namespace SCPakTool
             Log.Trace($"Created by {Author}.");
             Log.Write();
             RootCommand rootCommand = new("A command-line tool for unpacking, repacking, and inspecting Survivalcraft 2 .pak files.");
-            Option<FileInfo> inspectOption = new("--inspect", "-ins")
+            Option<FileInfo> inputPak = new("--pak")
             {
-                Description = "Specifies if the program should inspect the .pak file."
+                Description = "Specifies a .pak file for any operation."
             };
-            rootCommand.Options.Add(inspectOption);
-            rootCommand.SetAction(result => ExecuteCommandAction(result).GetAwaiter().GetResult());
+            Option<string?> decryptHeaderKey = new("--header-key")
+            {
+                Description = "A string that specifies the key to be used to decrypt the header of the .pak."
+            };
+            Option<string?> decryptContentKey = new("--content-key")
+            {
+                Description = "A string that specifies the key to be used to decrypt the content of the .pak."
+            };
+            Command inspectCommand = new("inspect", "Inspects a .pak file specified by '--pak [file]'.");
+            inspectCommand.Options.Add(inputPak);
+            inspectCommand.Options.Add(decryptHeaderKey);
+            inspectCommand.Options.Add(decryptContentKey);
+            inspectCommand.SetAction(r => ExecuteInspectCommand(r).GetAwaiter().GetResult());
+            rootCommand.Subcommands.Add(inspectCommand);
             var parseResult = rootCommand.Parse(args);
             return await parseResult.InvokeAsync();
         }
 
-        public async Task<int> ExecuteCommandAction(ParseResult result)
+        public async Task<int> ExecuteInspectCommand(ParseResult result)
         {
-            if (result.GetValue<FileInfo>("--inspect") is FileInfo info)
+            if (result.GetValue<FileInfo>("--pak") is FileInfo info && info.Exists)
             {
+                var headerKey = result.GetValue<string>("--header-key");
+                var contentKey = result.GetValue<string>("--content-key");
                 using var fs = info.OpenRead();
-                using var reader = new BinaryReader(fs);
-                string signature = Encoding.UTF8.GetString(reader.ReadBytes(4));
-                if (signature != "PK2\0")
+                try
                 {
-                    Log.Error($"Failed to inspect '{info.Name}' because it was not a Survivalcraft 2 .pak file!");
+                    var package = new PakFile(fs, headerKey, contentKey);
+                    Log.Write($"Inspecting '{info.FullName}'...");
+                    Log.Write($"Survivalcraft 2 Package File:", ConsoleColor.DarkCyan);
+                    Log.Write($" - Size: {(package.HeaderStream.Length / 1.049e+6).ToString("F3", CultureInfo.InvariantCulture)} MiB", ConsoleColor.Green);
+                    Log.Write($" - Content Count: {package.ContentCount}", ConsoleColor.DarkYellow);
+                    Log.Write($" - Contents:", ConsoleColor.DarkYellow);
+                    foreach (var content in package.ContentTable)
+                    {
+                        Log.Write($"    - {content.Name}", ConsoleColor.White);
+                        Log.Write($"       - Type: {content.Type}", ConsoleColor.DarkMagenta);
+                        Log.Write($"       - Data Offset: 0x{content.Offset:x}", ConsoleColor.Green);
+                        Log.Write($"       - Data Size: {(content.Size / 1.049e+6).ToString("F3", CultureInfo.InvariantCulture)} MiB", ConsoleColor.Green);
+                    }
+                }
+                catch (Exception e)
+                {
+#if DEBUG
+                    throw;
+#else
+                    Log.Error(e.Message);
                     return -1;
+#endif
                 }
                 //TODO: code to inspect and read shit
                 return 0;

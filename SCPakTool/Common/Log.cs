@@ -4,7 +4,8 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Common {
+namespace SCPakTool.Common
+{
     public static class Log {
         public static ConsoleColor Color {
             get => Console.ForegroundColor;
