@@ -1,6 +1,7 @@
 ﻿using SCPakTool.Common;
 using System;
 using System.Collections.Generic;
+using System.Drawing;
 using System.Globalization;
 using System.IO;
 using System.Linq;
@@ -10,84 +11,73 @@ using System.Threading.Tasks;
 
 namespace SCPakTool.Pak
 {
-    public class PackageFile : IDisposable
+    public class PackageFile
     {
-        public const int ContentTableOffset = 16;
+        public const int ContentMetadataOffset = 16;
         public static readonly string ExpectedSignature = "PK2\0";
 
-        public EncryptedStream HeaderStream { get; private set; }
-        public EncryptedStream ContentStream { get; private set; }
-
-        public BinaryReader HeaderReader { get; private set; }
-        public BinaryReader ContentReader { get; private set; }
-
-        public byte[] Signature { get; private set; }
-        public long ContentOffset { get; private set; }
-        public int ContentCount { get; private set; }
-
-        public List<ContentDescriptor> ContentTable { get; private set; } = [];
+        public readonly long Size = -1;
+        public readonly Dictionary<string, ContentDescriptor> ContentMetadata = [];
+        public readonly Dictionary<string, byte[]> ContentData = [];
 
         public PackageFile(Stream dataStream, string? headerKey = null, string? contentKey = null)
         {
+            Size = dataStream.Length;
             var signatureBytes = new byte[4];
             dataStream.Read(signatureBytes, 0, 4);
             dataStream.Position = 0;
             if (Encoding.UTF8.GetString(signatureBytes) is string sig && sig != ExpectedSignature)
                 throw new FormatException($"Failed to read .pak file, the signature didn't match what was expected. Expected '{ExpectedSignature}', got '{sig}'!");
-            HeaderStream = new EncryptedStream(dataStream, headerKey is not null ? Encoding.UTF8.GetBytes(headerKey) : null, 4);
-            HeaderReader = new BinaryReader(HeaderStream);
-            using (new ScopedCursor(HeaderStream, 0))
+            using var headerStream = new EncryptedStream(dataStream, headerKey is not null ? Encoding.UTF8.GetBytes(headerKey) : null, 4);
+            using var headerReader = new BinaryReader(headerStream);
+            var contentOffset = 0L;
+            var contentCount = 0;
+            using (new ScopedCursor(headerStream, 0))
             {
-                Signature = HeaderReader.ReadBytes(4);
-                ContentOffset = HeaderReader.ReadInt64();
-                ContentCount = HeaderReader.ReadInt32();
+                var _ = headerReader.ReadBytes(4);
+                contentOffset = headerReader.ReadInt64();
+                contentCount = headerReader.ReadInt32();
             }
-            ContentStream = new EncryptedStream(dataStream, contentKey is not null ? Encoding.UTF8.GetBytes(contentKey) : null, ContentOffset);
-            ContentReader = new BinaryReader(ContentStream);
-            ReadContentTable();
+            var contentStream = new EncryptedStream(dataStream, contentKey is not null ? Encoding.UTF8.GetBytes(contentKey) : null, contentOffset);
+            var contentReader = new BinaryReader(contentStream);
+            ReadContents(headerReader, contentReader, contentOffset, contentCount);
         }
 
-        private void ReadContentTable()
+        private void ReadContents(BinaryReader headerReader, BinaryReader contentReader, long contentOffset, int contentCount)
         {
-            ContentTable.Clear();
-            using (new ScopedCursor(HeaderStream, ContentTableOffset))
+            ContentMetadata.Clear();
+            ContentData.Clear();
+            using (new ScopedCursor(headerReader, ContentMetadataOffset))
             {
-                for (var i = 0; i < ContentCount; i++)
+                for (var i = 0; i < contentCount; i++)
                 {
-                    ContentTable.Add(new ContentDescriptor(HeaderReader));
+                    var name = headerReader.ReadString();
+                    var type = headerReader.ReadString();
+                    var offset = headerReader.ReadInt64();
+                    var size = headerReader.ReadInt64();
+                    ContentMetadata.Add(name, new ContentDescriptor(name, type, offset, size));
+                    byte[] data;
+                    using (new ScopedCursor(contentReader, contentOffset + offset))
+                    {
+                        data = contentReader.ReadBytes((int)size);
+                        ContentData.Add(name, data);
+                    }
                 }
             }
         }
 
-        public byte[]? ReadAssetBytes(ContentDescriptor assetEntry)
+        public BinaryReader? ReadContentData(ContentDescriptor descriptor)
         {
-            var entry = ContentTable.Find(o => o.Name == assetEntry.Name);
-            if (entry == null)
+            if (!ContentData.TryGetValue(descriptor.Name, out var data))
                 return null;
-            var last = ContentStream.Position;
-            ContentStream.Position = ContentOffset + entry.Offset;
-            var bytes = ContentReader.ReadBytes((int)entry.Size);
-            ContentStream.Position = last;
-            return bytes;
+            return new BinaryReader(new MemoryStream(data));
         }
 
-        public override string ToString()
+        public byte[]? GetBytesForContentData(ContentDescriptor descriptor)
         {
-            var text = $"Survivalcraft 2 Package File - {(HeaderStream.BaseStream.Length / 1.049e+6).ToString("F3", CultureInfo.InvariantCulture)} MB - {ContentCount} assets\n";
-            for (var i = 0; i < ContentTable.Count; i++)
-            {
-                text += "  > " + ContentTable[i].ToString() + "\n";
-            }
-            return text;
-        }
-
-        public void Dispose()
-        {
-            GC.SuppressFinalize(this);
-            HeaderStream.Dispose();
-            HeaderReader.Dispose();
-            ContentStream.Dispose();
-            ContentReader.Dispose();
+            if (!ContentData.TryGetValue(descriptor.Name, out var data))
+                return null;
+            return data;
         }
     }
 }
