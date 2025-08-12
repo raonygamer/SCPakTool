@@ -2,7 +2,7 @@
   "profiles": {
     "SCPakTool": {
       "commandName": "Project",
-      "commandLineArgs": "inspect \r\n--pak \"C:\\Users\\bravo\\OneDrive\\Documentos\\Content.pak\" \r\n--header-key \"dZBCgTPZzMgIwreEVRLxYFEYd8B0YCXyzZdMGZqXuNeu0nYWGFYQLbi8FGSk854Z65VDa5zjxnDH6TnGQLfO46HxvITJSq5DwVHZzrLkeSAgjrrSQxWk8Pz1ozssfWx00Rj56phPOKbghHqh0gJPuJvRRqYIV00Qa7VDDmlw1mPbJm5nOJ4qgrZxauJgMbasysCEiUERaMbZh8btQZLKivXlPyKT4YEp3SbZX\"\r\n--content-key \"?\""
+      "commandLineArgs": "inspect\r\n\"C:\\Users\\bravo\\OneDrive\\Documentos\\Content.pak\" \r\n--header-key \"dZBCgTPZzMgIwreEVRLxYFEYd8B0YCXyzZdMGZqXuNeu0nYWGFYQLbi8FGSk854Z65VDa5zjxnDH6TnGQLfO46HxvITJSq5DwVHZzrLkeSAgjrrSQxWk8Pz1ozssfWx00Rj56phPOKbghHqh0gJPuJvRRqYIV00Qa7VDDmlw1mPbJm5nOJ4qgrZxauJgMbasysCEiUERaMbZh8btQZLKivXlPyKT4YEp3SbZX\"\r\n--content-key \"?\""
     }
   }
 }
