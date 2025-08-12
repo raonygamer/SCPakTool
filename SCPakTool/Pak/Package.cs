@@ -29,10 +29,12 @@ namespace Saturn.PakTool.Pak
             using var fileStream = fileInfo.OpenRead();
             if (!IsPakFile(fileStream))
                 throw new InvalidDataException($"The file '{fileInfo.FullName}' is not a valid .pak file!");
-            using var headerStream = new EncryptedStream(fileStream, encryption?.Header, 4);
-            using var headerReader = new BinaryReader(headerStream);
-            var header = ReadHeader(headerReader);
-            ReadAllAssets(headerReader, header);
+            using var metadataStream = new EncryptedStream(fileStream, encryption?.Header, 4);
+            using var metadataReader = new BinaryReader(metadataStream);
+            var header = ReadHeader(metadataReader);
+            using var assetStream = new EncryptedStream(fileStream, encryption?.Content, header.AssetDataTableOffset);
+            using var assetReader = new BinaryReader(assetStream);
+            ReadAllAssets(metadataReader, assetReader, header);
         }
 
         public Package(byte[] bytes, PackageEncryption? encryption = null) : 
@@ -41,21 +43,25 @@ namespace Saturn.PakTool.Pak
 
         }
 
-        public void ReadAllAssets(BinaryReader reader, PackageHeader header)
+        public void ReadAllAssets(BinaryReader metadataReader, BinaryReader assetReader, PackageHeader header)
         {
-            using (new DisposableSeek(reader, header.AssetMetaTableOffset))
+            using (new DisposableSeek(metadataReader, header.AssetMetaTableOffset))
             {
                 for (var i = 0; i < header.AssetCount; i++)
                 {
-                    var name = reader.ReadString();
-                    var type = reader.ReadString();
-                    var offset = reader.ReadInt64();
-                    var size = reader.ReadInt64();
-                    _assets.Add(new Asset(new AssetMeta(name, type)
+                    var name = metadataReader.ReadString();
+                    var type = metadataReader.ReadString();
+                    var offset = metadataReader.ReadInt64();
+                    var size = metadataReader.ReadInt64();
+                    using (new DisposableSeek(assetReader, header.AssetDataTableOffset + offset))
                     {
-                        Offset = offset,
-                        Size = size
-                    }, new AssetData()));
+                        var data = assetReader.ReadBytes((int)size);
+                        _assets.Add(new Asset(new AssetMeta(name, type)
+                        {
+                            Offset = offset,
+                            Size = size
+                        }, new AssetData(data)));
+                    }
                 }
             }
         }

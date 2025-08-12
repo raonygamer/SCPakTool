@@ -33,6 +33,7 @@ namespace Saturn.PakTool.Commands
             {
                 throw new FileNotFoundException("Failed to find the specified .pak file!", File.FullName);
             }
+            await ValueTask.CompletedTask;
         }
     }
 }

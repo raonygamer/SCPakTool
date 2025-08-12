@@ -6,7 +6,8 @@ using System.Threading.Tasks;
 
 namespace Saturn.PakTool.Pak
 {
-    public class AssetData
+    public class AssetData(byte[] bytes)
     {
+        public byte[] Bytes { get; } = bytes;
     }
 }
